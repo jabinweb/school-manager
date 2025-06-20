@@ -3,6 +3,8 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { AttendanceStatus } from '@prisma/client'
 
+export const runtime = "nodejs"
+
 interface AttendanceRequestBody {
   classId: string
   date: string
