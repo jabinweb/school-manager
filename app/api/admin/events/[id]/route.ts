@@ -43,7 +43,7 @@ const mapPriorityToNumber = (priority: string): number => {
 // GET - Fetch single event by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await auth()
@@ -55,10 +55,9 @@ export async function GET(
       )
     }
 
-    const resolvedParams = await params
     const event = await prisma.announcement.findUnique({
       where: { 
-        id: resolvedParams.id,
+        id: params.id,
         type: AnnouncementType.EVENT
       }
     })
@@ -278,3 +277,4 @@ export async function DELETE(
     )
   }
 }
+
