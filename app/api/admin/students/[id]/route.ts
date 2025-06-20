@@ -15,8 +15,10 @@ interface StudentUpdateBody {
 // GET - Fetch single student by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params
+
   try {
     const session = await auth()
     
@@ -29,7 +31,7 @@ export async function GET(
 
     const student = await prisma.user.findUnique({
       where: {
-        id: params.id,
+        id: resolvedParams.id,
         role: Role.STUDENT
       },
       include: {
@@ -104,8 +106,10 @@ export async function GET(
 // PUT - Update student
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params
+
   try {
     const session = await auth()
     
@@ -121,7 +125,7 @@ export async function PUT(
     // Check if student exists
     const existingStudent = await prisma.user.findUnique({
       where: {
-        id: params.id,
+        id: resolvedParams.id,
         role: Role.STUDENT
       }
     })
@@ -147,7 +151,7 @@ export async function PUT(
       const emailExists = await prisma.user.findFirst({
         where: {
           email: body.email,
-          id: { not: params.id }
+          id: { not: resolvedParams.id }
         }
       })
 
@@ -164,7 +168,7 @@ export async function PUT(
       const studentNumberExists = await prisma.user.findFirst({
         where: {
           studentNumber: body.studentNumber,
-          id: { not: params.id }
+          id: { not: resolvedParams.id }
         }
       })
 
@@ -178,7 +182,7 @@ export async function PUT(
 
     // Update the student
     const updatedStudent = await prisma.user.update({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       data: {
         ...body,
         updatedAt: new Date()
@@ -211,8 +215,10 @@ export async function PUT(
 // DELETE - Delete student
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params
+
   try {
     const session = await auth()
     
@@ -226,7 +232,7 @@ export async function DELETE(
     // Check if student exists
     const existingStudent = await prisma.user.findUnique({
       where: {
-        id: params.id,
+        id: resolvedParams.id,
         role: Role.STUDENT
       }
     })
@@ -240,7 +246,7 @@ export async function DELETE(
 
     // Delete the student (this will cascade delete related records)
     await prisma.user.delete({
-      where: { id: params.id }
+      where: { id: resolvedParams.id }
     })
 
     return NextResponse.json({
