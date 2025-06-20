@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { Role, Gender, AttendanceStatus, ExamType, FeeType, AnnouncementType } from "@prisma/client"
+import { Role, AttendanceStatus, ExamType, FeeType, AnnouncementType } from "@prisma/client"
 
 export const userSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -11,7 +11,7 @@ export const profileSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
   dateOfBirth: z.date().optional(),
-  gender: z.nativeEnum(Gender).optional(),
+  gender: z.string().optional(), // Changed from z.nativeEnum(Gender) to z.string().optional()
   phone: z.string().optional(),
   address: z.string().optional(),
   parentName: z.string().optional(),
