@@ -18,7 +18,7 @@ interface AttendanceRequestBody {
 interface AttendanceResponse {
   success: boolean
   message?: string
-  data?: any
+  data?: unknown
   error?: string
 }
 
@@ -39,7 +39,10 @@ export async function GET(request: NextRequest): Promise<NextResponse<Attendance
     const date = searchParams.get('date')
     const limit = parseInt(searchParams.get('limit') || '50')
 
-    const whereClause: any = {}
+    const whereClause: {
+      classId?: string
+      date?: Date
+    } = {}
     if (classId) whereClause.classId = classId
     if (date) whereClause.date = new Date(date)
 
