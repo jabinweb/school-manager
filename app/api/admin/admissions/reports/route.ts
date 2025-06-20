@@ -3,6 +3,8 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { ApplicationStatus } from '@prisma/client'
 
+export const runtime = "nodejs"
+
 interface ReportsResponse {
   success: boolean
   data?: {
@@ -75,7 +77,10 @@ export async function GET(request: NextRequest): Promise<NextResponse<ReportsRes
     }
 
     // Build where clause for filtering
-    const whereClause: any = {
+    const whereClause: {
+      submittedAt: { gte: Date; lte: Date }
+      studentGrade?: string
+    } = {
       submittedAt: {
         gte: startDate,
         lte: endDate
