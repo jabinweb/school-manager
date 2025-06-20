@@ -12,8 +12,10 @@ interface SubjectUpdateBody {
 // GET - Fetch single subject by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params
+
   try {
     const session = await auth()
     
@@ -25,7 +27,7 @@ export async function GET(
     }
 
     const subject = await prisma.subject.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       include: {
         classes: {
           include: {
@@ -83,8 +85,10 @@ export async function GET(
 // PUT - Update subject
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params
+
   try {
     const session = await auth()
     
@@ -99,7 +103,7 @@ export async function PUT(
 
     // Check if subject exists
     const existingSubject = await prisma.subject.findUnique({
-      where: { id: params.id }
+      where: { id: resolvedParams.id }
     })
 
     if (!existingSubject) {
@@ -122,7 +126,7 @@ export async function PUT(
       const conflictSubject = await prisma.subject.findFirst({
         where: {
           AND: [
-            { id: { not: params.id } },
+            { id: { not: resolvedParams.id } },
             {
               OR: [
                 ...(body.code ? [{ code: body.code.toUpperCase() }] : []),
@@ -143,7 +147,7 @@ export async function PUT(
 
     // Update the subject
     const updatedSubject = await prisma.subject.update({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       data: {
         ...(body.name && { name: body.name.trim() }),
         ...(body.code && { code: body.code.trim().toUpperCase() }),
@@ -179,8 +183,10 @@ export async function PUT(
 // DELETE - Delete subject
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params
+
   try {
     const session = await auth()
     
@@ -193,7 +199,7 @@ export async function DELETE(
 
     // Check if subject exists
     const existingSubject = await prisma.subject.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       include: {
         _count: {
           select: {
@@ -225,7 +231,7 @@ export async function DELETE(
 
     // Delete the subject
     await prisma.subject.delete({
-      where: { id: params.id }
+      where: { id: resolvedParams.id }
     })
 
     return NextResponse.json({
