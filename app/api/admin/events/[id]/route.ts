@@ -43,11 +43,11 @@ const mapPriorityToNumber = (priority: string): number => {
 // GET - Fetch single event by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params
   try {
     const session = await auth()
-    
     if (!session || session.user?.role !== 'ADMIN') {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
@@ -57,7 +57,7 @@ export async function GET(
 
     const event = await prisma.announcement.findUnique({
       where: { 
-        id: params.id,
+        id: resolvedParams.id,
         type: AnnouncementType.EVENT
       }
     })
@@ -118,8 +118,9 @@ export async function GET(
 // PUT - Update event
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params
   try {
     const session = await auth()
     
@@ -135,7 +136,7 @@ export async function PUT(
     // Check if event exists
     const existingEvent = await prisma.announcement.findUnique({
       where: { 
-        id: params.id,
+        id: resolvedParams.id,
         type: AnnouncementType.EVENT
       }
     })
@@ -189,7 +190,7 @@ export async function PUT(
 
     // Update the event
     const updatedEvent = await prisma.announcement.update({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       data: {
         ...(body.title && { title: body.title.trim() }),
         ...(body.description !== undefined && { content: enhancedDescription }),
@@ -232,8 +233,9 @@ export async function PUT(
 // DELETE - Delete event
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params
   try {
     const session = await auth()
     
@@ -247,7 +249,7 @@ export async function DELETE(
     // Check if event exists
     const existingEvent = await prisma.announcement.findUnique({
       where: { 
-        id: params.id,
+        id: resolvedParams.id,
         type: AnnouncementType.EVENT
       }
     })
@@ -261,7 +263,7 @@ export async function DELETE(
 
     // Delete the event
     await prisma.announcement.delete({
-      where: { id: params.id }
+      where: { id: resolvedParams.id }
     })
 
     return NextResponse.json({
