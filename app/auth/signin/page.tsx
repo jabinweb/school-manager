@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { signIn, useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from 'next/link'
@@ -23,7 +23,7 @@ import {
   Users
 } from 'lucide-react'
 
-export default function SignInPage() {
+function SignInContent() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -34,7 +34,7 @@ export default function SignInPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const { toast } = useToast()
 
   // Redirect if already authenticated
@@ -345,5 +345,13 @@ export default function SignInPage() {
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[400px]">Loading...</div>}>
+      <SignInContent />
+    </Suspense>
   )
 }
