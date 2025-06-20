@@ -1,42 +1,36 @@
 "use client"
 
+import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle } from "lucide-react"
 
-const errorMessages = {
-  Configuration: "There is a problem with the server configuration.",
-  AccessDenied: "You do not have permission to sign in.",
-  Verification: "The verification token has expired or is invalid.",
-  Default: "An error occurred during authentication.",
-}
-
-export default function AuthErrorPage() {
+function ErrorContent() {
   const searchParams = useSearchParams()
-  const error = searchParams.get("error") as keyof typeof errorMessages
+  const error = searchParams.get("error") || "Unknown error"
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <AlertCircle className="h-12 w-12 text-destructive" />
-          </div>
-          <CardTitle className="text-2xl">Authentication Error</CardTitle>
-          <CardDescription>
-            {errorMessages[error] || errorMessages.Default}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-center">
-          <Button asChild>
-            <Link href="/auth/signin">
-              Try Again
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
+    <div className="flex flex-col items-center justify-center min-h-[400px]">
+      <Alert variant="destructive" className="mb-6">
+        <AlertCircle className="h-5 w-5" />
+        <AlertDescription>
+          {decodeURIComponent(error)}
+        </AlertDescription>
+      </Alert>
+      <Button asChild>
+        <Link href="/auth/signin">Back to Sign In</Link>
+      </Button>
     </div>
   )
 }
+
+export default function AuthErrorPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-12">Loading...</div>}>
+      <ErrorContent />
+    </Suspense>
+  )
+}
+           
