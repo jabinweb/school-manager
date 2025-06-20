@@ -54,6 +54,9 @@ const navigation = {
   ],
 }
 
+const allowedRoles = ["ADMIN", "TEACHER", "STUDENT"] as const
+type AllowedRole = typeof allowedRoles[number]
+
 export function Sidebar() {
   const { data: session } = useSession()
   const pathname = usePathname()
@@ -61,7 +64,11 @@ export function Sidebar() {
 
   if (!session?.user) return null
 
-  const userNavigation = navigation[session.user.role] || []
+  const role: AllowedRole = allowedRoles.includes(session.user.role as AllowedRole)
+    ? (session.user.role as AllowedRole)
+    : "STUDENT"
+
+  const userNavigation = navigation[role] || []
 
   return (
     <>
