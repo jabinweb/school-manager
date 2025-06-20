@@ -14,15 +14,17 @@ interface ScheduleRequestBody {
 interface ScheduleResponse {
   success: boolean
   message?: string
-  data?: any
+  data?: unknown
   error?: string
 }
 
 // PUT - Update schedule
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ScheduleResponse>> {
+  const resolvedParams = await params
+
   try {
     const session = await auth()
     
@@ -62,7 +64,7 @@ export async function PUT(
 
     // Check if schedule exists
     const existingSchedule = await prisma.timetableEntry.findUnique({
-      where: { id: params.id }
+      where: { id: resolvedParams.id }
     })
 
     if (!existingSchedule) {
@@ -75,7 +77,7 @@ export async function PUT(
     // Check for schedule conflicts (excluding current schedule)
     const conflictingSchedule = await prisma.timetableEntry.findFirst({
       where: {
-        id: { not: params.id },
+        id: { not: resolvedParams.id },
         classId: body.classId,
         day: body.day as DayOfWeek,
         OR: [
@@ -110,7 +112,7 @@ export async function PUT(
 
     // Update the schedule
     const updatedSchedule = await prisma.timetableEntry.update({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       data: {
         classId: body.classId,
         subjectId: body.subjectId,
@@ -155,8 +157,10 @@ export async function PUT(
 // DELETE - Delete schedule
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ScheduleResponse>> {
+  const resolvedParams = await params
+
   try {
     const session = await auth()
     
@@ -169,7 +173,7 @@ export async function DELETE(
 
     // Check if schedule exists
     const existingSchedule = await prisma.timetableEntry.findUnique({
-      where: { id: params.id }
+      where: { id: resolvedParams.id }
     })
 
     if (!existingSchedule) {
@@ -181,7 +185,7 @@ export async function DELETE(
 
     // Delete the schedule
     await prisma.timetableEntry.delete({
-      where: { id: params.id }
+      where: { id: resolvedParams.id }
     })
 
     return NextResponse.json({
@@ -197,3 +201,5 @@ export async function DELETE(
     )
   }
 }
+
+

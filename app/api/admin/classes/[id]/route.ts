@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 interface ClassDetailsResponse {
   success: boolean
   message?: string
-  data?: any
+  data?: unknown
   error?: string
 }
 
