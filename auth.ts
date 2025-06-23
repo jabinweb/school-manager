@@ -146,11 +146,13 @@ export const config = {
       }
       return session
     },
-    async redirect({ url }) {
+    async redirect({ url, baseUrl }) {
+      // Use AUTH_URL from env if available, otherwise use baseUrl
+      const envBaseUrl = process.env.AUTH_URL || baseUrl
       // Admin users go to admin panel, others go to dashboard
-      if (url.startsWith("/")) return `/dashboard`
-      else if (new URL(url).origin === '/') return url
-      return `/dashboard`
+      if (url.startsWith("/")) return `${envBaseUrl}/dashboard`
+      else if (new URL(url).origin === envBaseUrl) return url
+      return `${envBaseUrl}/dashboard`
     },
   },
   pages: {
