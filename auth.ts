@@ -146,11 +146,11 @@ export const config = {
       }
       return session
     },
-    async redirect({ url, baseUrl }) {
+    async redirect({ url }) {
       // Admin users go to admin panel, others go to dashboard
-      if (url.startsWith("/")) return `${baseUrl}/dashboard`
-      else if (new URL(url).origin === baseUrl) return url
-      return `${baseUrl}/dashboard`
+      if (url.startsWith("/")) return `/dashboard`
+      else if (new URL(url).origin === '/') return url
+      return `/dashboard`
     },
   },
   pages: {
