@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { FacultyList } from "@/components/faculty/faculty-list"
 import { PageHero } from "@/components/ui/page-hero"
-import { GraduationCap } from "lucide-react"
 
 // Department categories for filtering
 const departments = [
@@ -78,7 +77,7 @@ export default async function FacultyPage() {
         title="Our Faculty & Staff"
         description="Meet our dedicated team of educators and support professionals"
         badge={{
-          icon: GraduationCap, 
+          iconName: "GraduationCap",
           text: "Expert Educators"
         }}
         gradient="blue"
@@ -97,4 +96,3 @@ export default async function FacultyPage() {
   )
 }
 
-            
