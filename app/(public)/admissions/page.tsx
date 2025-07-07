@@ -90,7 +90,7 @@ export default function AdmissionsPage() {
         title="Admission to Greenwood High"
         description="Begin your child's journey towards excellence. Our admission process is designed to identify students who will thrive in our nurturing and academically rigorous environment."
         badge={{
-          icon: "GraduationCap",
+          icon: GraduationCap,
           text: "Join Our Community"
         }}
         gradient="green"
