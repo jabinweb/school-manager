@@ -15,7 +15,7 @@ import {
   Clock, 
   Send,
   Users,
-  GraduationCap,
+  GraduationCap, MessageCircle,
 } from 'lucide-react'
 import { schoolConfig } from '@/lib/config'
 
