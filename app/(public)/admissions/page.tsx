@@ -16,7 +16,7 @@ import {
   Phone,
   Mail,
   MapPin,
-  Download
+  Download, GraduationCap
 } from 'lucide-react'
 import Link from 'next/link'
 
