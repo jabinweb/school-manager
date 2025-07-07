@@ -78,7 +78,7 @@ export default async function FacultyPage() {
         title="Our Faculty & Staff"
         description="Meet our dedicated team of educators and support professionals"
         badge={{
-          icon: GraduationCap, // Pass icon name as string instead of component
+          icon: GraduationCap, 
           text: "Expert Educators"
         }}
         gradient="blue"

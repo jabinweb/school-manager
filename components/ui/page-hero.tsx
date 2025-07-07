@@ -3,20 +3,21 @@
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { fadeInUp } from '@/lib/motion'
-import * as LucideIcons from 'lucide-react'
+import { LucideIcon } from 'lucide-react'
 
 type PageHeroProps = {
   title: string
   description?: string
   badge?: {
-    icon?: LucideIcons.LucideIcon // Changed from icon component to iconName string
+    icon?: LucideIcon // Support direct icon component
+    iconName?: string // Support icon name string
     text: string
   }
   gradient?: 'blue' | 'purple' | 'green' | 'orange' | 'red' | 'gray'
   align?: 'left' | 'center'
   size?: 'sm' | 'md' | 'lg'
   className?: string
-  children?: React.ReactNode // Add children prop
+  children?: React.ReactNode
 }
 
 export function PageHero({ 
@@ -27,7 +28,7 @@ export function PageHero({
   align = 'center',
   size = 'md',
   className,
-  children // Add children to destructuring
+  children
 }: PageHeroProps) {
   const gradientStyles = {
     blue: 'from-blue-600/20 via-blue-500/10 to-transparent',
@@ -44,14 +45,24 @@ export function PageHero({
     lg: 'py-28'
   }
 
-  // Render icon from the iconName string
-  const renderIcon = (iconName: string | undefined) => {
-    if (!iconName) return null
-    
-    const IconComponent = LucideIcons[iconName]
-    
-    if (!IconComponent) return null
-    return <IconComponent className="h-4 w-4 mr-2" />
+  // Render icon - prioritize direct icon component over iconName
+  const renderIcon = () => {
+    if (!badge) return null
+
+    // If icon component is provided directly (preferred approach)
+    if (badge.icon) {
+      const IconComponent = badge.icon
+      return <IconComponent className="h-4 w-4 mr-2" />
+    }
+
+    // Fallback to iconName string approach (for compatibility)
+    if (badge.iconName) {
+      // You could implement dynamic icon loading here if needed
+      console.warn('Using iconName prop - consider using direct icon component instead')
+      return null
+    }
+
+    return null
   }
 
   return (
@@ -71,7 +82,7 @@ export function PageHero({
         >
           {badge && (
             <div className="inline-flex items-center rounded-full px-3 py-1 mb-4 bg-primary/10 border border-primary/20 text-primary text-sm font-medium">
-              {badge.iconName && renderIcon(badge.iconName)}
+              {renderIcon()}
               <span>{badge.text}</span>
             </div>
           )}
@@ -93,4 +104,4 @@ export function PageHero({
     </div>
   )
 }
-
+            
