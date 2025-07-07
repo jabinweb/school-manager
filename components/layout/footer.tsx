@@ -49,7 +49,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-primary transition-colors">
+                <Link href="/faculty" className="hover:text-primary transition-colors">
                   Faculty & Staff
                 </Link>
               </li>
@@ -66,22 +66,22 @@ export function Footer() {
             <h3 className="text-lg font-semibold text-white dark:text-white mb-4">Admissions</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="#" className="hover:text-primary transition-colors">
+                <Link href="/admissions/apply" className="hover:text-primary transition-colors">
                   Apply Now
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-primary transition-colors">
+                <Link href="/admissions/requirements" className="hover:text-primary transition-colors">
                   Admission Requirements
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-primary transition-colors">
+                <Link href="/admissions/tuition" className="hover:text-primary transition-colors">
                   Tuition & Fees
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-primary transition-colors">
+                <Link href="/admissions/financial-aid" className="hover:text-primary transition-colors">
                   Financial Aid
                 </Link>
               </li>

@@ -1,26 +1,33 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { prisma } from "@/lib/prisma"
+import { DashboardStats } from "@/components/dashboard/dashboard-stats"
+import { DashboardRecentActivities } from "@/components/dashboard/dashboard-recent-activities"
+import { DashboardUpcomingEvents } from "@/components/dashboard/dashboard-upcoming-events"
 import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { 
+  MessageSquare, 
+  Bell, 
+  Plus,
   Users, 
   BookOpen, 
   Calendar, 
-  Bell,
   UserCheck,
   CreditCard,
   Award,
-  BarChart3,
-  Plus,
-  ArrowRight,
-  Clock,
-  CheckCircle,
-  FileText,
-  MessageSquare
+  FileText
 } from 'lucide-react'
 import Link from 'next/link'
+import { PaymentStatus, ExamType } from '@prisma/client'
+
+type RecentActivity = {
+  id: string | number
+  message: string
+  time: string
+  status: string
+}
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -29,94 +36,278 @@ export default async function DashboardPage() {
     redirect("/auth/signin")
   }
 
-  // Redirect admin users to admin panel
-  if (session.user?.role === "ADMIN") {
-    redirect("/admin")
-  }
-
   const userRole = session.user?.role || "STUDENT"
+  const userId = session.user?.id
 
-  // Role-based stats
-  const getStatsForRole = (role: string) => {
-    switch (role) {
-      case "TEACHER":
-        return {
-          myClasses: 5,
-          totalStudents: 125,
-          todayAttendance: 95.2,
-          pendingGrades: 23,
-          upcomingLessons: 8,
-          assignmentsDue: 12
-        }
-      case "STUDENT":
-        return {
-          myGrades: "A-",
-          attendanceRate: 96.5,
-          assignmentsDue: 3,
-          upcomingExams: 2,
-          extracurriculars: 4,
-          creditsCompleted: 45
-        }
-      case "PARENT":
-        return {
-          children: 2,
-          attendanceRate: 94.8,
-          averageGrade: "B+",
-          upcomingEvents: 4,
-          pendingPayments: 1,
-          teacherMeetings: 2
-        }
-      default:
-        return {}
+  // Dynamic stats for each role
+  let stats: any = {}
+
+  let recentActivities: RecentActivity[] = []
+  let upcomingEvents: any[] = []
+
+  if (userRole === "TEACHER") {
+    // Classes taught by this teacher
+    const classes = await prisma.class.findMany({
+      where: { teacherId: userId },
+      include: { students: true }
+    })
+    const classIds = classes.map(c => c.id)
+    const totalStudents = classes.reduce((sum, c) => sum + c.students.length, 0)
+    // Today's attendance rate
+    const today = new Date().toISOString().split("T")[0]
+    const todayAttendanceSessions = await prisma.attendance.findMany({
+      where: { classId: { in: classIds }, date: new Date(today) },
+      include: { records: true }
+    })
+    let present = 0, total = 0
+    todayAttendanceSessions.forEach(session => {
+      present += session.records.filter(r => r.status === "PRESENT").length
+      total += session.records.length
+    })
+    const todayAttendance = total > 0 ? Math.round((present / total) * 1000) / 10 : 0
+    // Pending grades (assignments/exams not graded)
+    const pendingGrades = await prisma.examResult.count({
+      where: {
+        exam: { classId: { in: classIds } },
+        grade: null
+      }
+    })
+    // Upcoming lessons (timetable entries in future)
+    const upcomingLessons = await prisma.timetableEntry.count({
+      where: {
+        classId: { in: classIds },
+        day: { in: ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"] }
+      }
+    })
+    // Assignments due (exams of type ASSIGNMENT in future)
+    const assignmentsDue = await prisma.exam.count({
+      where: {
+        classId: { in: classIds },
+        type: ExamType.ASSIGNMENT,
+        date: { gte: new Date() }
+      }
+    })
+    stats = {
+      myClasses: classes.length,
+      totalStudents,
+      todayAttendance,
+      pendingGrades,
+      upcomingLessons,
+      assignmentsDue
     }
-  }
-
-  const stats = getStatsForRole(userRole)
-
-  // Role-based activities
-  const getActivitiesForRole = (role: string) => {
-    switch (role) {
-      case "TEACHER":
-        return [
-          { id: 1, message: 'Grade 10-A Math assignment submitted', time: '2 hours ago', status: 'pending' },
-          { id: 2, message: 'Parent meeting scheduled with Sarah Johnson', time: '4 hours ago', status: 'completed' },
-          { id: 3, message: 'New announcement posted to Grade 9-B', time: '6 hours ago', status: 'active' },
-          { id: 4, message: 'Attendance marked for all classes', time: '1 day ago', status: 'completed' }
-        ]
-      case "STUDENT":
-        return [
-          { id: 1, message: 'Mathematics assignment due tomorrow', time: '2 hours ago', status: 'pending' },
-          { id: 2, message: 'Science project grade received: A-', time: '1 day ago', status: 'completed' },
-          { id: 3, message: 'New announcement from Ms. Smith', time: '2 days ago', status: 'active' },
-          { id: 4, message: 'Library book return reminder', time: '3 days ago', status: 'pending' }
-        ]
-      case "PARENT":
-        return [
-          { id: 1, message: 'John\'s math grade updated: B+', time: '1 hour ago', status: 'completed' },
-          { id: 2, message: 'Parent-teacher meeting reminder', time: '3 hours ago', status: 'pending' },
-          { id: 3, message: 'Fee payment due next week', time: '1 day ago', status: 'pending' },
-          { id: 4, message: 'School event: Science Fair next Friday', time: '2 days ago', status: 'active' }
-        ]
-      default:
-        return []
+    // Recent activities for teacher
+    recentActivities = [
+      ...(
+        await prisma.examResult.findMany({
+          where: { exam: { classId: { in: classIds } } },
+          orderBy: { createdAt: "desc" },
+          take: 2,
+          include: { exam: true, student: true }
+        })
+      ).map(r => ({
+        id: r.id,
+        message: `Assignment graded for ${r.student.name}`,
+        time: r.createdAt.toLocaleDateString(),
+        status: r.grade ? "completed" : "pending"
+      })),
+      ...(
+        await prisma.announcement.findMany({
+          where: { classId: { in: classIds } },
+          orderBy: { createdAt: "desc" },
+          take: 2
+        })
+      ).map(a => ({
+        id: a.id,
+        message: `New announcement posted: ${a.title}`,
+        time: a.createdAt.toLocaleDateString(),
+        status: a.isActive ? "active" : "completed"
+      }))
+    ].slice(0, 4)
+    // Upcoming events (announcements of type EVENT)
+    upcomingEvents = await prisma.announcement.findMany({
+      where: {
+        classId: { in: classIds },
+        type: "EVENT",
+        isActive: true,
+        publishDate: { gte: new Date() }
+      },
+      orderBy: { publishDate: "asc" },
+      take: 3,
+      select: { title: true, publishDate: true }
+    })
+    upcomingEvents = upcomingEvents.map(e => ({
+      title: e.title,
+      date: e.publishDate.toISOString().split("T")[0],
+      time: e.publishDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+    }))
+  } else if (userRole === "STUDENT") {
+    // Student stats
+    const student = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { class: true }
+    })
+    // GPA (average grade from exam results)
+    const grades = await prisma.examResult.findMany({
+      where: { studentId: userId, grade: { not: null } },
+      select: { grade: true }
+    })
+    // Simple GPA mapping (A=4, B=3, C=2, D=1, F=0)
+    const gradeMap: Record<string, number> = { "A": 4, "A-": 3.7, "B+": 3.3, "B": 3, "B-": 2.7, "C+": 2.3, "C": 2, "C-": 1.7, "D": 1, "F": 0 }
+    const gpa = grades.length > 0 ? (grades.reduce((sum, g) => sum + (gradeMap[g.grade!] || 0), 0) / grades.length).toFixed(2) : "N/A"
+    // Attendance rate
+    const attendanceRecords = await prisma.attendanceRecord.findMany({
+      where: { studentId: userId }
+    })
+    const attendanceRate = attendanceRecords.length > 0
+      ? Math.round((attendanceRecords.filter(r => r.status === "PRESENT").length / attendanceRecords.length) * 1000) / 10
+      : 0
+    // Assignments due (future exams of type ASSIGNMENT)
+    const assignmentsDue = await prisma.exam.count({
+      where: {
+        classId: student?.classId || "",
+        type: ExamType.ASSIGNMENT,
+        date: { gte: new Date() }
+      }
+    })
+    // Upcoming exams
+    const upcomingExams = await prisma.exam.count({
+      where: {
+        classId: student?.classId || "",
+        date: { gte: new Date() }
+      }
+    })
+    // Extracurriculars (dummy: 0)
+    // Credits completed (dummy: 0)
+    stats = {
+      myGrades: gpa,
+      attendanceRate,
+      assignmentsDue,
+      upcomingExams,
+      extracurriculars: 0,
+      creditsCompleted: 0
     }
-  }
-
-  const recentActivities = getActivitiesForRole(userRole)
-
-  const upcomingEvents = [
-    { title: 'Parent-Teacher Meeting', date: '2024-02-15', time: '9:00 AM' },
-    { title: 'Science Fair', date: '2024-02-20', time: '10:00 AM' },
-    { title: 'Sports Day', date: '2024-02-25', time: '8:00 AM' }
-  ]
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return <CheckCircle className="h-4 w-4 text-green-600" />
-      case 'pending': return <Clock className="h-4 w-4 text-yellow-600" />
-      case 'active': return <Bell className="h-4 w-4 text-blue-600" />
-      default: return <Clock className="h-4 w-4 text-gray-600" />
+    // Recent activities for student
+    recentActivities = [
+      ...(
+        await prisma.exam.findMany({
+          where: { classId: student?.classId || "" },
+          orderBy: { date: "asc" },
+          take: 2
+        })
+      ).map(e => ({
+        id: e.id,
+        message: `${e.title} due on ${e.date.toLocaleDateString()}`,
+        time: e.date.toLocaleDateString(),
+        status: "pending"
+      })),
+      ...(
+        await prisma.announcement.findMany({
+          where: { classId: student?.classId || "" },
+          orderBy: { createdAt: "desc" },
+          take: 2
+        })
+      ).map(a => ({
+        id: a.id,
+        message: `Announcement: ${a.title}`,
+        time: a.createdAt.toLocaleDateString(),
+        status: a.isActive ? "active" : "completed"
+      }))
+    ].slice(0, 4)
+    // Upcoming events (announcements of type EVENT)
+    upcomingEvents = await prisma.announcement.findMany({
+      where: {
+        classId: student?.classId || "",
+        type: "EVENT",
+        isActive: true,
+        publishDate: { gte: new Date() }
+      },
+      orderBy: { publishDate: "asc" },
+      take: 3,
+      select: { title: true, publishDate: true }
+    })
+    upcomingEvents = upcomingEvents.map(e => ({
+      title: e.title,
+      date: e.publishDate.toISOString().split("T")[0],
+      time: e.publishDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+    }))
+  } else if (userRole === "PARENT") {
+    // Parent stats
+    const children = await prisma.user.findMany({
+      where: { parentEmail: session.user?.email, role: "STUDENT" }
+    })
+    // Average grade for children
+    let allGrades: string[] = []
+    for (const child of children) {
+      const grades = await prisma.examResult.findMany({
+        where: { studentId: child.id, grade: { not: null } },
+        select: { grade: true }
+      })
+      allGrades = allGrades.concat(grades.map(g => g.grade!))
     }
+    const gradeMap: Record<string, number> = { "A": 4, "A-": 3.7, "B+": 3.3, "B": 3, "B-": 2.7, "C+": 2.3, "C": 2, "C-": 1.7, "D": 1, "F": 0 }
+    const avgGrade = allGrades.length > 0
+      ? Object.entries(gradeMap).reduce((best, [g, v]) => {
+          const count = allGrades.filter(x => x === g).length
+          return count > (best.count || 0) ? { grade: g, count } : best
+        }, { grade: "N/A", count: 0 } as any).grade
+      : "N/A"
+    // Attendance rate for children
+    let attendanceRecords: any[] = []
+    for (const child of children) {
+      const records = await prisma.attendanceRecord.findMany({
+        where: { studentId: child.id }
+      })
+      attendanceRecords = attendanceRecords.concat(records)
+    }
+    const attendanceRate = attendanceRecords.length > 0
+      ? Math.round((attendanceRecords.filter(r => r.status === "PRESENT").length / attendanceRecords.length) * 1000) / 10
+      : 0
+    // Pending payments for children
+    const pendingPayments = await prisma.feePayment.count({
+      where: {
+        studentId: { in: children.map(c => c.id) },
+        status: PaymentStatus.PENDING
+      }
+    })
+    // Upcoming events (school-wide)
+    upcomingEvents = await prisma.announcement.findMany({
+      where: {
+        type: "EVENT",
+        isActive: true,
+        publishDate: { gte: new Date() }
+      },
+      orderBy: { publishDate: "asc" },
+      take: 3,
+      select: { title: true, publishDate: true }
+    })
+    upcomingEvents = upcomingEvents.map(e => ({
+      title: e.title,
+      date: e.publishDate.toISOString().split("T")[0],
+      time: e.publishDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+    }))
+    stats = {
+      children: children.length,
+      attendanceRate,
+      averageGrade: avgGrade,
+      upcomingEvents: upcomingEvents.length,
+      pendingPayments,
+      teacherMeetings: 0 // Not implemented
+    }
+    // Recent activities for parent
+    recentActivities = [
+      ...children.slice(0, 2).map(child => ({
+        id: child.id,
+        message: `${child.name}'s grade updated`,
+        time: "Today",
+        status: "completed"
+      })),
+      ...upcomingEvents.slice(0, 2).map(e => ({
+        id: e.title,
+        message: `Upcoming event: ${e.title}`,
+        time: e.date,
+        status: "active"
+      }))
+    ]
   }
 
   const getRoleBasedGreeting = (role: string) => {
@@ -128,227 +319,7 @@ export default async function DashboardPage() {
     }
   }
 
-  const renderRoleBasedStats = () => {
-    switch (userRole) {
-      case "TEACHER":
-        return (
-          <>
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                  My Classes
-                </CardTitle>
-                <BookOpen className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                  {stats.myClasses}
-                </div>
-                <p className="text-xs text-blue-700 dark:text-blue-300">
-                  Active this semester
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-green-900 dark:text-green-100">
-                  Total Students
-                </CardTitle>
-                <Users className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-900 dark:text-green-100">
-                  {stats.totalStudents}
-                </div>
-                <p className="text-xs text-green-700 dark:text-green-300">
-                  Across all classes
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-purple-900 dark:text-purple-100">
-                  Today&apos;s Attendance
-                </CardTitle>
-                <UserCheck className="h-4 w-4 text-purple-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-                  {stats.todayAttendance}%
-                </div>
-                <Progress value={stats.todayAttendance} className="mt-2" />
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-orange-900 dark:text-orange-100">
-                  Pending Grades
-                </CardTitle>
-                <FileText className="h-4 w-4 text-orange-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-900 dark:text-orange-100">
-                  {stats.pendingGrades}
-                </div>
-                <p className="text-xs text-orange-700 dark:text-orange-300">
-                  Assignments to grade
-                </p>
-              </CardContent>
-            </Card>
-          </>
-        )
-
-      case "STUDENT":
-        return (
-          <>
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                  Current GPA
-                </CardTitle>
-                <Award className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                  {stats.myGrades}
-                </div>
-                <p className="text-xs text-blue-700 dark:text-blue-300">
-                  This semester
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-green-900 dark:text-green-100">
-                  Attendance Rate
-                </CardTitle>
-                <UserCheck className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-900 dark:text-green-100">
-                  {stats.attendanceRate}%
-                </div>
-                <Progress value={stats.attendanceRate} className="mt-2" />
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-purple-900 dark:text-purple-100">
-                  Assignments Due
-                </CardTitle>
-                <FileText className="h-4 w-4 text-purple-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-                  {stats.assignmentsDue}
-                </div>
-                <p className="text-xs text-purple-700 dark:text-purple-300">
-                  This week
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-orange-900 dark:text-orange-100">
-                  Upcoming Exams
-                </CardTitle>
-                <Calendar className="h-4 w-4 text-orange-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-900 dark:text-orange-100">
-                  {stats.upcomingExams}
-                </div>
-                <p className="text-xs text-orange-700 dark:text-orange-300">
-                  Next 2 weeks
-                </p>
-              </CardContent>
-            </Card>
-          </>
-        )
-
-      case "PARENT":
-        return (
-          <>
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                  My Children
-                </CardTitle>
-                <Users className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                  {stats.children}
-                </div>
-                <p className="text-xs text-blue-700 dark:text-blue-300">
-                  Enrolled students
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-green-900 dark:text-green-100">
-                  Average Grade
-                </CardTitle>
-                <Award className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-900 dark:text-green-100">
-                  {stats.averageGrade}
-                </div>
-                <p className="text-xs text-green-700 dark:text-green-300">
-                  This semester
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-purple-900 dark:text-purple-100">
-                  Attendance Rate
-                </CardTitle>
-                <UserCheck className="h-4 w-4 text-purple-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-                  {stats.attendanceRate}%
-                </div>
-                <Progress value={stats.attendanceRate} className="mt-2" />
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-orange-900 dark:text-orange-100">
-                  Pending Payments
-                </CardTitle>
-                <CreditCard className="h-4 w-4 text-orange-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-900 dark:text-orange-100">
-                  {stats.pendingPayments}
-                </div>
-                <p className="text-xs text-orange-700 dark:text-orange-300">
-                  Outstanding fees
-                </p>
-              </CardContent>
-            </Card>
-          </>
-        )
-
-      default:
-        return null
-    }
-  }
-
-  const renderRoleBasedQuickActions = () => {
+  function renderRoleBasedQuickActions(userRole: string) {
     switch (userRole) {
       case "TEACHER":
         return (
@@ -379,7 +350,6 @@ export default async function DashboardPage() {
             </Button>
           </>
         )
-
       case "STUDENT":
         return (
           <>
@@ -409,7 +379,6 @@ export default async function DashboardPage() {
             </Button>
           </>
         )
-
       case "PARENT":
         return (
           <>
@@ -439,7 +408,6 @@ export default async function DashboardPage() {
             </Button>
           </>
         )
-
       default:
         return null
     }
@@ -479,48 +447,13 @@ export default async function DashboardPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {renderRoleBasedStats()}
+          <DashboardStats userRole={userRole} stats={stats} />
         </div>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Activities */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Recent Activities
-                </CardTitle>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/dashboard/activities">
-                    View All
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Link>
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-center gap-4 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                    {getStatusIcon(activity.status)}
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-slate-900 dark:text-white">
-                        {activity.message}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {activity.time}
-                      </p>
-                    </div>
-                    <Badge variant={activity.status === 'completed' ? 'default' : activity.status === 'pending' ? 'secondary' : 'outline'}>
-                      {activity.status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <DashboardRecentActivities recentActivities={recentActivities} />
 
           {/* Quick Actions & Events */}
           <div className="space-y-6">
@@ -533,43 +466,12 @@ export default async function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {renderRoleBasedQuickActions()}
+                {renderRoleBasedQuickActions(userRole)}
               </CardContent>
             </Card>
 
             {/* Upcoming Events */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Upcoming Events
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {upcomingEvents.map((event, index) => (
-                    <div key={index} className="flex items-center gap-3 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                      <div className="flex-shrink-0 w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <Calendar className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                          {event.title}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {event.date} • {event.time}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <Button variant="outline" className="w-full mt-4" asChild>
-                  <Link href="/dashboard/events">
-                    View All Events
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
+            <DashboardUpcomingEvents upcomingEvents={upcomingEvents} />
           </div>
         </div>
       </div>

@@ -15,7 +15,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { signOut } from 'next-auth/react'
 
-interface AdminHeaderProps {
+interface DashboardHeaderProps {
   user: {
     id?: string
     name?: string | null
@@ -25,20 +25,32 @@ interface AdminHeaderProps {
   }
 }
 
-export function AdminHeader({ user }: AdminHeaderProps) {
+export function DashboardHeader({ user }: DashboardHeaderProps) {
   const handleSignOut = () => {
     signOut({ callbackUrl: '/' })
   }
 
+  // Role label and color
+  const getRoleLabel = (role?: string) => {
+    switch (role) {
+      case "ADMIN": return { label: "Admin", color: "bg-red-100 text-red-700" }
+      case "TEACHER": return { label: "Teacher", color: "bg-blue-100 text-blue-700" }
+      case "STUDENT": return { label: "Student", color: "bg-green-100 text-green-700" }
+      case "PARENT": return { label: "Parent", color: "bg-yellow-100 text-yellow-700" }
+      default: return { label: "User", color: "bg-gray-100 text-gray-700" }
+    }
+  }
+  const roleInfo = getRoleLabel(user?.role)
+
   return (
-    <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+    <header className="sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
       <div className="flex items-center justify-between">
         {/* Search */}
         <div className="flex items-center space-x-4 flex-1 max-w-md">
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Search students, teachers, classes..."
+              placeholder="Search..."
               className="pl-10"
             />
           </div>
@@ -47,7 +59,7 @@ export function AdminHeader({ user }: AdminHeaderProps) {
         {/* Actions */}
         <div className="flex items-center space-x-4">
           <ThemeToggle />
-          
+
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
@@ -73,9 +85,9 @@ export function AdminHeader({ user }: AdminHeaderProps) {
                   <p className="text-xs leading-none text-muted-foreground">
                     {user?.email || 'No email'}
                   </p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    Role: {user?.role || 'Unknown'}
-                  </p>
+                  <div className={`inline-block px-2 py-0.5 rounded text-xs font-semibold mt-1 ${roleInfo.color}`}>
+                    {roleInfo.label}
+                  </div>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -100,4 +112,3 @@ export function AdminHeader({ user }: AdminHeaderProps) {
   )
 }
 
-           

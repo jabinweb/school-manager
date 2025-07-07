@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -37,6 +37,7 @@ import {
 export function AdminSidebar() {
   const pathname = usePathname()
   const [openMenus, setOpenMenus] = useState<string[]>([])
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   const toggleMenu = (menuId: string) => {
     setOpenMenus(prev => 
@@ -45,6 +46,11 @@ export function AdminSidebar() {
         : [...prev, menuId]
     )
   }
+
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
 
   const menuItems = [
     {
@@ -221,95 +227,227 @@ export function AdminSidebar() {
   ]
 
   return (
-    <div className="fixed left-0 top-0 h-full w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 z-40">
-      {/* Logo */}
-      <div className="p-6 border-b border-slate-200 dark:border-slate-700">
-        <Link href="/admin" className="flex items-center space-x-3">
-          <GraduationCap className="h-8 w-8 text-primary" />
-          <div>
-            <div className="font-bold text-slate-900 dark:text-white">
-              {schoolConfig.shortName}
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              Admin Panel
-            </div>
-          </div>
-        </Link>
-      </div>
+    <>
+      {/* Mobile Sidebar Toggle Button */}
+      <button
+        className="fixed top-4 left-4 z-50 lg:hidden bg-primary text-white rounded-full p-2 shadow-lg focus:outline-none"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Open sidebar"
+        type="button"
+      >
+        <ChevronRight className="h-6 w-6" />
+      </button>
 
-      {/* Navigation */}
-      <nav className="p-4 space-y-2 overflow-y-auto h-[calc(100vh-120px)]">
-        {menuItems.map((item) => (
-          <div key={item.id}>
-            {item.children ? (
-              <div>
-                <button
-                  onClick={() => toggleMenu(item.id)}
+      {/* Sidebar for desktop */}
+      <div className="hidden lg:block fixed left-0 top-0 h-full w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 z-40">
+        {/* Logo */}
+        <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+          <Link href="/admin" className="flex items-center space-x-3">
+            <GraduationCap className="h-8 w-8 text-primary" />
+            <div>
+              <div className="font-bold text-slate-900 dark:text-white">
+                {schoolConfig.shortName}
+              </div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                Admin Panel
+              </div>
+            </div>
+          </Link>
+        </div>
+
+        {/* Navigation */}
+        <nav className="p-4 space-y-2 overflow-y-auto h-[calc(100vh-120px)]">
+          {menuItems.map((item) => (
+            <div key={item.id}>
+              {item.children ? (
+                <div>
+                  <button
+                    onClick={() => toggleMenu(item.id)}
+                    className={cn(
+                      "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                      openMenus.includes(item.id)
+                        ? "bg-primary/10 text-primary dark:bg-primary/20"
+                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                    )}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <item.icon className="h-5 w-5" />
+                      <span>{item.title}</span>
+                    </div>
+                    {openMenus.includes(item.id) ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </button>
+                  
+                  <AnimatePresence>
+                    {openMenus.includes(item.id) && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="ml-6 mt-2 space-y-1">
+                          {item.children.map((child) => (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              className={cn(
+                                "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                                pathname === child.href
+                                  ? "bg-primary text-primary-foreground"
+                                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                              )}
+                            >
+                              <child.icon className="h-4 w-4" />
+                              <span>{child.title}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ) : (
+                <Link
+                  href={item.href!}
                   className={cn(
-                    "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                    openMenus.includes(item.id)
-                      ? "bg-primary/10 text-primary dark:bg-primary/20"
+                    "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                    pathname === item.href
+                      ? "bg-primary text-primary-foreground"
                       : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
                   )}
                 >
-                  <div className="flex items-center space-x-3">
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.title}</span>
+                </Link>
+              )}
+            </div>
+          ))}
+        </nav>
+      </div>
+
+      {/* Sidebar for mobile (drawer) */}
+      <div
+        className={`
+          fixed inset-0 z-50 transition-all duration-300
+          ${mobileOpen ? "block" : "pointer-events-none"}
+          lg:hidden
+        `}
+        style={{ background: mobileOpen ? "rgba(0,0,0,0.3)" : "transparent" }}
+        onClick={() => setMobileOpen(false)}
+        aria-label="Sidebar overlay"
+      >
+        <div
+          className={`
+            fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 z-50
+            transform transition-transform duration-300
+            ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
+          `}
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Close button */}
+          <button
+            className="absolute top-4 right-4 text-slate-500 dark:text-slate-400 hover:text-primary"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close sidebar"
+            type="button"
+          >
+            <ChevronDown className="h-6 w-6" />
+          </button>
+          {/* Logo */}
+          <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+            <Link href="/admin" className="flex items-center space-x-3">
+              <GraduationCap className="h-8 w-8 text-primary" />
+              <div>
+                <div className="font-bold text-slate-900 dark:text-white">
+                  {schoolConfig.shortName}
+                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  Admin Panel
+                </div>
+              </div>
+            </Link>
+          </div>
+
+          {/* Navigation */}
+          <nav className="p-4 space-y-2 overflow-y-auto h-[calc(100vh-120px)]">
+            {menuItems.map((item) => (
+              <div key={item.id}>
+                {item.children ? (
+                  <div>
+                    <button
+                      onClick={() => toggleMenu(item.id)}
+                      className={cn(
+                        "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                        openMenus.includes(item.id)
+                          ? "bg-primary/10 text-primary dark:bg-primary/20"
+                          : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                      )}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <item.icon className="h-5 w-5" />
+                        <span>{item.title}</span>
+                      </div>
+                      {openMenus.includes(item.id) ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </button>
+                    
+                    <AnimatePresence>
+                      {openMenus.includes(item.id) && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="ml-6 mt-2 space-y-1">
+                            {item.children.map((child) => (
+                              <Link
+                                key={child.href}
+                                href={child.href}
+                                className={cn(
+                                  "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                                  pathname === child.href
+                                    ? "bg-primary text-primary-foreground"
+                                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                )}
+                              >
+                                <child.icon className="h-4 w-4" />
+                                <span>{child.title}</span>
+                              </Link>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                ) : (
+                  <Link
+                    href={item.href!}
+                    className={cn(
+                      "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                      pathname === item.href
+                        ? "bg-primary text-primary-foreground"
+                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                    )}
+                  >
                     <item.icon className="h-5 w-5" />
                     <span>{item.title}</span>
-                  </div>
-                  {openMenus.includes(item.id) ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                </button>
-                
-                <AnimatePresence>
-                  {openMenus.includes(item.id) && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="ml-6 mt-2 space-y-1">
-                        {item.children.map((child) => (
-                          <Link
-                            key={child.href}
-                            href={child.href}
-                            className={cn(
-                              "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                              pathname === child.href
-                                ? "bg-primary text-primary-foreground"
-                                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
-                            )}
-                          >
-                            <child.icon className="h-4 w-4" />
-                            <span>{child.title}</span>
-                          </Link>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ) : (
-              <Link
-                href={item.href!}
-                className={cn(
-                  "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                  pathname === item.href
-                    ? "bg-primary text-primary-foreground"
-                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  </Link>
                 )}
-              >
-                <item.icon className="h-5 w-5" />
-                <span>{item.title}</span>
-              </Link>
-            )}
-          </div>
-        ))}
-      </nav>
-    </div>
+              </div>
+            ))}
+          </nav>
+        </div>
+      </div>
+    </>
   )
 }

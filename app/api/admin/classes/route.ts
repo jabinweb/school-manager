@@ -28,7 +28,11 @@ export async function GET(): Promise<NextResponse<ClassResponse>> {
   try {
     const session = await auth()
     
-    if (!session || session.user?.role !== 'ADMIN') {
+    // Fix: allow both ADMIN and TEACHER (not just one)
+    if (
+      !session ||
+      (session.user?.role !== 'ADMIN' && session.user?.role !== 'TEACHER')
+    ) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
