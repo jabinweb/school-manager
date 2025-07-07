@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { FacultyList } from "@/components/faculty/faculty-list"
 import { PageHero } from "@/components/ui/page-hero"
+import { GraduationCap } from "lucide-react"
 
 // Department categories for filtering
 const departments = [
