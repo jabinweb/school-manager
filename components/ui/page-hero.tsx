@@ -9,13 +9,14 @@ type PageHeroProps = {
   title: string
   description?: string
   badge?: {
-    iconName?: string // Changed from icon component to iconName string
+    icon?: LucideIcons.LucideIcon // Changed from icon component to iconName string
     text: string
   }
   gradient?: 'blue' | 'purple' | 'green' | 'orange' | 'red' | 'gray'
   align?: 'left' | 'center'
   size?: 'sm' | 'md' | 'lg'
   className?: string
+  children?: React.ReactNode // Add children prop
 }
 
 export function PageHero({ 
@@ -25,7 +26,8 @@ export function PageHero({
   gradient = 'blue',
   align = 'center',
   size = 'md',
-  className 
+  className,
+  children // Add children to destructuring
 }: PageHeroProps) {
   const gradientStyles = {
     blue: 'from-blue-600/20 via-blue-500/10 to-transparent',
@@ -46,8 +48,7 @@ export function PageHero({
   const renderIcon = (iconName: string | undefined) => {
     if (!iconName) return null
     
-    // Add proper type assertion to tell TypeScript this is a valid key
-    const IconComponent = LucideIcons[iconName as keyof typeof LucideIcons] as React.ComponentType<{ className?: string }>
+    const IconComponent = LucideIcons[iconName]
     
     if (!IconComponent) return null
     return <IconComponent className="h-4 w-4 mr-2" />
@@ -78,9 +79,14 @@ export function PageHero({
             {title}
           </h1>
           {description && (
-            <p className="text-xl text-slate-600 dark:text-slate-300">
+            <p className="text-xl text-slate-600 dark:text-slate-300 mb-6">
               {description}
             </p>
+          )}
+          {children && (
+            <div className="mt-8">
+              {children}
+            </div>
           )}
         </motion.div>
       </div>
