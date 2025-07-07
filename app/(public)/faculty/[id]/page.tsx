@@ -3,15 +3,17 @@ import { notFound } from "next/navigation"
 import { FacultyMemberProfile } from "@/components/faculty/faculty-member-profile"
 
 interface FacultyMemberPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default async function FacultyMemberPage({ params }: FacultyMemberPageProps) {
+  const { id } = await params
+
   const facultyMember = await prisma.user.findUnique({
     where: {
-      id: params.id,
+      id: id,
       role: "TEACHER"
     },
     include: {
