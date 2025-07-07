@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge'
 import { PageHero } from '@/components/ui/page-hero'
 import { fadeInUp } from '@/lib/motion'
 import { 
-  Search, 
   FileText, 
   Clock, 
   CheckCircle, 
@@ -125,7 +124,7 @@ export default function TrackApplicationPage() {
         title="Track Your Application"
         description="Check the status of your admission application and next steps"
         badge={{
-          icon: Search,
+          iconName: "Search",
           text: "Application Status"
         }}
         gradient="blue"

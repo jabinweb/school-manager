@@ -16,7 +16,6 @@ import {
   Send,
   Users,
   GraduationCap,
-  MessageCircle
 } from 'lucide-react'
 import { schoolConfig } from '@/lib/config'
 
@@ -74,10 +73,10 @@ export default function ContactPage() {
         title="Contact Greenwood High"
         description="We're here to help answer your questions and provide information about our school community. Reach out to us anytime."
         badge={{
-          icon: MessageCircle,
+          iconName: "MessageCircle",
           text: "Get In Touch"
         }}
-        gradient="teal"
+        gradient="gray"
       />
 
       {/* Contact Information */}
@@ -348,4 +347,4 @@ export default function ContactPage() {
     </div>
   )
 }
-                
+

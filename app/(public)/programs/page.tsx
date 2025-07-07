@@ -113,7 +113,7 @@ export default function ProgramsPage() {
         title="Our Academic Programs"
         description="Comprehensive educational programs designed to challenge, inspire, and prepare students for success in higher education and beyond."
         badge={{
-          icon: BookOpen,
+          iconName: "BookOpen",
           text: "Academic Excellence"
         }}
         gradient="purple"
