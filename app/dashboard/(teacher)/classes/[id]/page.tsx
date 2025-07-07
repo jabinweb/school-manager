@@ -1,275 +1,184 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { BookOpen, Users, Calendar, Award, FileText, Bell } from "lucide-react"
+import { Users, BookOpen, Calendar, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
 interface ClassPageProps {
-  params: { id: string }
+  params: Promise<{
+    id: string
+  }>
 }
 
 export default async function TeacherClassPage({ params }: ClassPageProps) {
+  const { id } = await params
+  
   const session = await auth()
-  if (!session) redirect("/auth/signin")
-  if (session.user?.role !== "TEACHER") redirect("/dashboard")
+  
+  if (!session || session.user?.role !== "TEACHER") {
+    redirect("/dashboard")
+  }
 
-  const classId = params.id
   const cls = await prisma.class.findUnique({
-    where: { id: classId },
+    where: { 
+      id: id,
+      teacherId: session.user?.id // Ensure teacher can only access their own classes
+    },
     include: {
-      subjects: { include: { subject: true } },
-      students: true,
-      timetable: {
-        include: { subject: true },
-        orderBy: { day: "asc" }
+      students: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          studentNumber: true
+        }
       },
-      exams: true,
-      announcements: {
-        orderBy: { publishDate: "desc" },
-        take: 3
+      subjects: {
+        include: {
+          subject: true
+        }
+      },
+      timetable: {
+        include: {
+          subject: true
+        },
+        orderBy: {
+          startTime: 'asc'
+        }
       }
     }
   })
 
   if (!cls) {
-    return (
-      <div className="p-8">
-        <h2 className="text-xl font-bold mb-4">Class not found</h2>
-        <p>The class you are looking for does not exist.</p>
-      </div>
-    )
+    redirect("/dashboard/classes")
   }
 
   return (
-    <div>
-      {/* Header Card */}
-      <Card className="mb-6 shadow-lg">
-        <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <BookOpen className="h-10 w-10 text-primary" />
-            <div>
-              <CardTitle className="text-2xl">{cls.name}</CardTitle>
-              <CardDescription>
-                Section <span className="font-semibold">{cls.section}</span> &bull; Grade <span className="font-semibold">{cls.grade}</span>
-              </CardDescription>
-            </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/dashboard/classes">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Classes
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+              {cls.name}
+            </h1>
+            <p className="text-slate-600 dark:text-slate-400 mt-1">
+              Grade {cls.grade} • Section {cls.section}
+            </p>
           </div>
-          <div className="flex gap-2">
-            <Badge variant="outline" className="text-xs">{cls.students.length} Students</Badge>
-            <Badge variant="secondary" className="text-xs">{cls.subjects.length} Subjects</Badge>
-            <Badge variant="default" className="text-xs">Timetable</Badge>
-          </div>
+        </div>
+        <Badge variant="outline">
+          {cls.students.length} / {cls.capacity} Students
+        </Badge>
+      </div>
+
+      {/* Class Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{cls.students.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Capacity: {cls.capacity}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Subjects</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{cls.subjects.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Active subjects
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Schedule</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{cls.timetable.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Weekly periods
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Students List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Students</CardTitle>
         </CardHeader>
+        <CardContent>
+          {cls.students.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No students enrolled in this class yet.
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {cls.students.map((student) => (
+                <div key={student.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">{student.name}</h4>
+                    <p className="text-sm text-muted-foreground">{student.studentNumber}</p>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {student.email}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
       </Card>
 
-      {/* Tabs for navigation */}
-      <Tabs defaultValue="students" className="mb-8">
-        <TabsList>
-          <TabsTrigger value="students">
-            <Users className="h-4 w-4 mr-1" /> Students
-          </TabsTrigger>
-          <TabsTrigger value="subjects">
-            <BookOpen className="h-4 w-4 mr-1" /> Subjects
-          </TabsTrigger>
-          <TabsTrigger value="timetable">
-            <Calendar className="h-4 w-4 mr-1" /> Timetable
-          </TabsTrigger>
-          <TabsTrigger value="exams">
-            <Award className="h-4 w-4 mr-1" /> Exams
-          </TabsTrigger>
-          <TabsTrigger value="announcements">
-            <Bell className="h-4 w-4 mr-1" /> Announcements
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Students Tab */}
-        <TabsContent value="students">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-accent" />
-                Students ({cls.students.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {cls.students.length === 0 ? (
-                <div className="text-slate-500 text-sm">No students enrolled.</div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  {cls.students.map((student) => (
-                    <div key={student.id} className="flex items-center gap-3 p-3 rounded-lg border hover:shadow transition">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback>
-                          {student.name?.charAt(0).toUpperCase() || "S"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{student.name}</div>
-                        <div className="text-xs text-slate-500">{student.email}</div>
-                      </div>
-                    </div>
-                  ))}
+      {/* Subjects */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Subjects</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {cls.subjects.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No subjects assigned to this class yet.
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 gap-4">
+              {cls.subjects.map((classSubject) => (
+                <div key={classSubject.id} className="p-4 border rounded-lg">
+                  <h4 className="font-medium">{classSubject.subject.name}</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Code: {classSubject.subject.code}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Credits: {classSubject.subject.credits}
+                  </p>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Subjects Tab */}
-        <TabsContent value="subjects">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-primary" />
-                Subjects ({cls.subjects.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {cls.subjects.length === 0 ? (
-                <div className="text-slate-500 text-sm">No subjects assigned.</div>
-              ) : (
-                <ul className="space-y-2">
-                  {cls.subjects.map((s) => (
-                    <li key={s.subject.id} className="flex items-center gap-2">
-                      <Badge variant="secondary">{s.subject.name}</Badge>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Timetable Tab */}
-        <TabsContent value="timetable">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-warning" />
-                Timetable
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {cls.timetable.length === 0 ? (
-                <div className="text-slate-500 text-sm">No timetable data available.</div>
-              ) : (
-                // Group timetable entries by day for a professional look
-                (() => {
-                  // Group by day
-                  const daysOrder = [
-                    "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"
-                  ]
-                  const grouped: Record<string, typeof cls.timetable> = {}
-                  for (const entry of cls.timetable) {
-                    if (!grouped[entry.day]) grouped[entry.day] = []
-                    grouped[entry.day].push(entry)
-                  }
-                  // Sort each day's entries by startTime
-                  for (const day in grouped) {
-                    grouped[day].sort((a, b) => a.startTime.localeCompare(b.startTime))
-                  }
-                  return (
-                    <div className="space-y-6">
-                      {daysOrder.filter(day => grouped[day]?.length).map(day => (
-                        <div key={day}>
-                          <div className="font-semibold text-primary mb-2 text-base flex items-center gap-2">
-                            <Calendar className="h-4 w-4" />
-                            {day.charAt(0) + day.slice(1).toLowerCase()}
-                          </div>
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm border rounded-lg shadow-sm bg-white dark:bg-slate-900">
-                              <thead>
-                                <tr className="bg-slate-100 dark:bg-slate-800">
-                                  <th className="text-left py-2 px-3">Subject</th>
-                                  <th className="text-left py-2 px-3">Start</th>
-                                  <th className="text-left py-2 px-3">End</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {grouped[day].map((entry) => (
-                                  <tr key={entry.id} className="border-b last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800">
-                                    <td className="py-2 px-3 font-medium">{entry.subject?.name || "-"}</td>
-                                    <td className="py-2 px-3">{entry.startTime}</td>
-                                    <td className="py-2 px-3">{entry.endTime}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )
-                })()
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Exams Tab */}
-        <TabsContent value="exams">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5 text-green-600" />
-                Exams
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {cls.exams.length === 0 ? (
-                <div className="text-slate-500 text-sm">No exams scheduled.</div>
-              ) : (
-                <ul className="space-y-2">
-                  {cls.exams.map((exam) => (
-                    <li key={exam.id} className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-primary" />
-                      <span className="font-medium">{exam.title}</span>
-                      <span className="text-xs text-slate-500">{exam.type}</span>
-                      <span className="text-xs text-slate-400">{new Date(exam.date).toLocaleDateString()}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Announcements Tab */}
-        <TabsContent value="announcements">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5 text-blue-600" />
-                Recent Announcements
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {cls.announcements.length === 0 ? (
-                <div className="text-slate-500 text-sm">No announcements yet.</div>
-              ) : (
-                <ul className="space-y-2">
-                  {cls.announcements.map((ann) => (
-                    <li key={ann.id} className="flex items-center gap-2">
-                      <Badge variant="outline">{ann.title}</Badge>
-                      <span className="text-xs text-slate-400">{new Date(ann.publishDate).toLocaleDateString()}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <Button asChild variant="link" className="mt-4">
-                <Link href="/dashboard/announcements">
-                  View All Announcements
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
+                          
