@@ -73,7 +73,7 @@ export default function ContactPage() {
         title="Contact Greenwood High"
         description="We're here to help answer your questions and provide information about our school community. Reach out to us anytime."
         badge={{
-          iconName: MessageCircle,
+          icon: MessageCircle,
           text: "Get In Touch"
         }}
         gradient="gray"

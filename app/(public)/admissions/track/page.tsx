@@ -124,7 +124,7 @@ export default function TrackApplicationPage() {
         title="Track Your Application"
         description="Check the status of your admission application and next steps"
         badge={{
-          iconName: "Search",
+          icon: Search,
           text: "Application Status"
         }}
         gradient="blue"

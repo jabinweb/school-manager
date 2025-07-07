@@ -283,7 +283,7 @@ export default function AdmissionApplicationPage() {
         title="Online Application"
         description="Complete your admission application in a few simple steps"
         badge={{
-          iconName: "FileText",
+          icon: FileText,
           text: "Apply Now"
         }}
         gradient="green"

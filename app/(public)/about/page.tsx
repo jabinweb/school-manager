@@ -63,7 +63,7 @@ export default function AboutPage() {
         title="About Our School"
         description={`${schoolConfig.description} Since 1999, we've been committed to providing exceptional education that nurtures both academic excellence and character development.`}
         badge={{
-          iconName: GraduationCap,
+          icon: GraduationCap,
           text: "About Our School"
         }}
         gradient="blue"
