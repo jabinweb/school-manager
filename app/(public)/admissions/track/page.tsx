@@ -17,7 +17,7 @@ import {
   Calendar,
   Mail,
   Phone,
-  User
+  User, Search
 } from 'lucide-react'
 
 type ApplicationStatus = 'pending' | 'under_review' | 'interview_scheduled' | 'accepted' | 'rejected' | 'waitlisted'
